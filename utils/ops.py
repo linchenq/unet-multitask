@@ -2,20 +2,30 @@ from collections import OrderedDict
 import torch.nn as nn
 import torch.nn.functional as F
 
-class BasicBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, name):
-        super(BasicBlock, self).__init__()
-        self.block = nn.Sequential(OrderedDict([
-                            (name + "conv1", nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)),
-                            (name + "bn1", nn.BatchNorm2d(out_ch)),
-                            (name + "relu1", nn.ReLU(inplace=True)),
-                            (name + "conv2", nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1)),
-                            (name + "bn2", nn.BatchNorm2d(out_ch)),
-                            (name + "relu2", nn.ReLU(inplace=True))
-        ]))
+class ResBlock(nn.Module):
+    def __init__(self, in_ch, mid_ch):
+        super(ResBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_ch, mid_ch, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(mid_ch)
+        self.leaky1 = nn.LeakyReLU(0.1)
+
+        self.conv2 = nn.Conv2d(mid_ch, in_ch, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(in_ch)
+        self.leaky2 = nn.LeakyReLU(0.1)
 
     def forward(self, x):
-        return self.block(x)
+        res = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.leaky1(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.leaky2(out)
+
+        out += res
+
+        return res
 
 
 class Upsample(nn.Module):
