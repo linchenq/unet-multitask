@@ -2,6 +2,7 @@ import os
 import argparse
 import time
 from collections import defaultdict
+import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -83,10 +84,12 @@ class Trainer(object):
 
         self.logger.scalar_summary('loss/train', np.mean(loss_train), epoch)
 
-        if epoch % self.args.eval_interval:
-            pass
-        if epoch % self.args.save_interval:
-            pass
+        if epoch % self.args.eval_interval == 0:
+            valid_loss, valid_metrics, valid_samples = evaluate(self.model, self.dataloader, self.device)
+            print_metrics(valid_metrics, valid_samples, 'valid', epoch)
+            self.logger.scalar_summary('loss/valid', np.mean(valid_loss), epoch)
+        if epoch % self.args.save_interval == 0:
+            torch.save(self.model.state_dict, f"./saves/unet_ckpt_%d.pth" % epoch)
 
 
 

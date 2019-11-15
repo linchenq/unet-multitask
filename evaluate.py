@@ -3,7 +3,7 @@ import torch
 
 from utils.loss import *
 
-def evaluate(model, dataset):
+def evaluate(model, dataset, device):
     model.eval()
 
     metrics = defaultdict(float)
@@ -13,7 +13,7 @@ def evaluate(model, dataset):
 
     for batch_i, (x, y_true) in enumerate(dataset['valid']):
         x, y_true = x.float(), y_true.float()
-        x, y_true = x.to(self.device), y_true.to(self.device)
+        x, y_true = x.to(device), y_true.to(device)
 
         with torch.no_grad():
             y_pred = model(x)
@@ -22,4 +22,4 @@ def evaluate(model, dataset):
 
         samples += x.size(0)
 
-    return loss_valid, metrics
+    return loss_valid, metrics, samples
