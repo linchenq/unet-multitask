@@ -2,7 +2,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class UnetLoss(nn.Module):
-
     def __init__(self):
         super(UnetLoss, self).__init__()
         self.smooth = 1.0

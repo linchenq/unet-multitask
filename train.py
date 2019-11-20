@@ -89,7 +89,7 @@ class Trainer(object):
             print_metrics(valid_metrics, valid_samples, 'valid', epoch)
             self.logger.scalar_summary('loss/valid', np.mean(valid_loss), epoch)
         if epoch % self.args.save_interval == 0:
-            torch.save(self.model.state_dict, f"./saves/unet_ckpt_%d.pth" % epoch)
+            torch.save(self.model.state_dict(), f"./saves/unet_ckpt_%d.pth" % epoch)
 
 
 
@@ -122,11 +122,9 @@ def main():
         dataset[name] = SpineSegDataset(list_path=set_path)
 
     # model
-    model = Unet(in_channels=cfg.IN_CH, out_channels=cfg.SEG.OUT_CH, init_features=cfg.INIT_FEATURES)
-
+    model = ResUnet(in_channels=cfg.IN_CH, out_channels=cfg.SEG.OUT_CH, init_features=cfg.INIT_FEATURES)
     # Training
     trainer = Trainer(args, dataset, model)
-
     trainer.train()
 
 

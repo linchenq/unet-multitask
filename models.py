@@ -12,8 +12,8 @@ class ResUnet(nn.Module):
         self.trailer = Trailer(out_ch=out_channels, init_features=init_features)
 
     def forward(self, x):
-        _filters = self.header(x)
-        ret = self.trailer(x, _filters)
+        filters = self.header(x)
+        ret = self.trailer(x, filters)
 
         return ret
 
