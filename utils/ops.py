@@ -1,15 +1,35 @@
-from collections import OrderedDict
 import torch.nn as nn
 import torch.nn.functional as F
 
-class ResBlock(nn.Module):
-    def __init__(self, in_ch, mid_ch):
-        super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_ch, mid_ch, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(mid_ch)
+class BasicBlock(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_ch)
         self.leaky1 = nn.LeakyReLU(0.1)
 
-        self.conv2 = nn.Conv2d(mid_ch, in_ch, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_ch)
+        self.leaky2 = nn.LeakyReLU(0.1)
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.leaky1(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.leaky2(out)
+
+        return out
+
+class ResBlock(nn.Module):
+    def __init__(self, in_ch):
+        super(ResBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(in_ch)
+        self.leaky1 = nn.LeakyReLU(0.1)
+
+        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(in_ch)
         self.leaky2 = nn.LeakyReLU(0.1)
 
@@ -27,7 +47,6 @@ class ResBlock(nn.Module):
 
         return res
 
-
 class Upsample(nn.Module):
     def __init__(self, mode, in_ch=-1, out_ch=-1):
         super(Upsample, self).__init__()
@@ -43,16 +62,16 @@ class Upsample(nn.Module):
 
 
 class Downsample(nn.Module):
-    def __init__(self, mode, in_ch=-1):
+    def __init__(self, mode, in_ch=-1, out_ch=-1):
         super(Downsample, self).__init__()
         if mode == "pool":
             self.block = nn.MaxPool2d(kernel_size=2, stride=2)
         elif mode == "conv":
-            self.block = nn.Sequential(OrderedDict([
-                                (nn.Conv2d(in_ch, in_ch, kernel_size=3, stride=2, padding=1)),
-                                (nn.BatchNorm2d(in_ch)),
+            self.block = nn.Sequential(
+                                (nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=2, padding=1)),
+                                (nn.BatchNorm2d(out_ch)),
                                 (nn.ReLU(inplace=True))
-            ]))
+            )
         else:
             raise NotImplementedError
 
