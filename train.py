@@ -99,7 +99,6 @@ class Trainer(object):
             torch.save(self.model.state_dict(), f"./saves/unet_ckpt_%d.pth" % epoch)
 
 
-
 def main():
     # argparse
     parser = argparse.ArgumentParser(description="U-Net parameter selection")

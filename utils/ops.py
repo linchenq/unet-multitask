@@ -1,51 +1,85 @@
+from collections import OrderedDict
 import torch.nn as nn
 import torch.nn.functional as F
 
-class BasicBlock(nn.Module):
+
+class _Conv2d3x3(nn.Module):
     def __init__(self, in_ch, out_ch):
-        super(BasicBlock, self).__init__()
+        super(_Conv2d3x3, self).__init__()
         self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(out_ch)
         self.leaky1 = nn.LeakyReLU(0.1)
 
-        self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(out_ch)
-        self.leaky2 = nn.LeakyReLU(0.1)
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.leaky1(out)
+
+        return out
+
+
+class _Conv2d1x1(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(_Conv2d3x3, self).__init__()
+        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_ch)
+        self.leaky1 = nn.LeakyReLU(0.1)
 
     def forward(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.leaky1(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.leaky2(out)
 
         return out
+
+
+class BasicBlock(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(BasicBlock, self).__init__()
+        self.block1 = _Conv2d3x3(in_ch, out_ch)
+        self.block2 = _Conv2d3x3(out_ch, out_ch)
+
+    def forward(self, x):
+       out = self.block1(x)
+       out = self.block2(out)
+
+       return out
+
 
 class ResBlock(nn.Module):
     def __init__(self, in_ch):
         super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(in_ch)
-        self.leaky1 = nn.LeakyReLU(0.1)
-
-        self.conv2 = nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(in_ch)
-        self.leaky2 = nn.LeakyReLU(0.1)
+        self.block1 = _Conv2d3x3(in_ch, in_ch)
+        self.block2 = _Conv2d3x3(in_ch, in_ch)
 
     def forward(self, x):
         res = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.leaky1(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.leaky2(out)
-
+        out = self.block1(x)
+        out = self.block2(out)
         out += res
 
         return res
+
+
+class YoloBlock(nn.Module):
+    def __init__(self, n_blocks, in_ch, out_ch, num_filters):
+        blocks = []
+        for i in range(n_blocks):
+            blocks.append(f"YOLO_{i}_1x1_{in_ch}_{out_ch}", _Conv2d1x1(in_ch, out_ch))
+            blocks.append(f"YOLO_{i}_3x3_{in_ch}_{out_ch}", _Conv2d3x3(out_ch, in_ch))
+        blocks.append(f"YOLO_final_1x1_{in_ch}_{out_ch}", _Conv2d1x1(in_ch, out_ch))
+        self.blocks = nn.Sequential(OrderedDict(blocks))
+
+        self.conv3x3 = _Conv2d3x3(out_ch, in_ch)
+        self.conv1x1 = _Conv2d1x1(in_ch, num_filters)
+
+    def forward(self, x):
+        out = self.blocks(x)
+        out = self.conv3x3(out)
+        out = self.conv1x1(out)
+
+        return out
+
 
 class Upsample(nn.Module):
     def __init__(self, mode, in_ch=-1, out_ch=-1):
@@ -58,7 +92,8 @@ class Upsample(nn.Module):
             raise NotImplementedError
 
     def forward(self, x):
-        return self.block(x)
+        out = self.block(x)
+        return out
 
 
 class Downsample(nn.Module):
@@ -76,4 +111,5 @@ class Downsample(nn.Module):
             raise NotImplementedError
 
     def forward(self, x):
-        return self.block(x)
+        out = self.block(x)
+        return out

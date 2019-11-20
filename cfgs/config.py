@@ -50,3 +50,7 @@ __C.SEG.REP = ['DSegMap', 'VSegMap', 'BgSegMap', 'OtherSegMap']
 assert len(__C.SEG.REP) == __C.SEG.OUT_CH
 ## path for segmentation folder
 __C.SEG.FOLDER = 'C:/Research/LumbarSpine/OriginalData/RealSegmentationData/'
+
+# Localization settings
+__C.LOC = edict()
+

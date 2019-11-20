@@ -99,9 +99,13 @@ class Trailer(nn.Module):
 
 
 class YoloLayer(nn.Module):
-    def __init__(self):
+    def __init__(self, anchors, num_classes):
         super(YoloLayer, self).__init__()
+        self.anchors = anchors
+        self.num_classes = num_classes
+
         pass
+
 
 
 if __name__ == '__main__':
