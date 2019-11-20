@@ -25,13 +25,13 @@ __C.TRAIN.SAVE_PATH = "./saves"
 # device
 __C.TRAIN.DEVICE = "cuda:0"
 # training epoches
-__C.TRAIN.EPOCH = 150
+__C.TRAIN.EPOCH = 202
 # save interval
 __C.TRAIN.SAVE_INTERVAL = 10
 # evaluate interval
-__C.TRAIN.EVAL_INTERVAL = 1
+__C.TRAIN.EVAL_INTERVAL = 5
 # decay step for scheduler
-__C.TRAIN.LR_SCHEDULER = 60
+__C.TRAIN.LR_SCHEDULER = 100
 # learning rate
 __C.TRAIN.LR = 0.01
 

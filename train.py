@@ -2,7 +2,9 @@ import os
 import argparse
 import time
 from collections import defaultdict
+from tqdm import tqdm
 import numpy as np
+
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -38,13 +40,14 @@ class Trainer(object):
         self.model.to(self.device)
 
         self.logger = Logger(self.args.log_path)
+        self.log_table = None
 
     def train(self):
         num_epochs = self.args.epoch
 
-        for epoch in range(num_epochs):
-            log_str = "-"*5 + f" [Epoch {epoch}/{num_epochs-1}] " + "-"*5
-            print(log_str)
+        for epoch in tqdm(range(num_epochs)):
+            # log_str = "-"*5 + f" [Epoch {epoch}/{num_epochs-1}] " + "-"*5
+            # print(log_str)
             since = time.time()
 
             self.run_single_step(epoch)
@@ -52,6 +55,8 @@ class Trainer(object):
 
             time_elapsed = time.time() - since
             print('{:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+
+        print(AsciiTable(self.log_table).table)
 
     def run_single_step(self, epoch):
         self.model.train()
@@ -61,9 +66,9 @@ class Trainer(object):
         loss_train = []
 
         for batch_i, (x, y_true) in enumerate(self.dataloader['train']):
-            log_str = "---- [Phase %s][Epoch %d/%d, Batch %d/%d] ----"% \
-                        ('train', epoch, self.args.epoch, batch_i, len(self.dataloader['train']))
-            print(log_str)
+            # log_str = "---- [Phase %s][Epoch %d/%d, Batch %d/%d] ----"% \
+            #             ('train', epoch, self.args.epoch, batch_i, len(self.dataloader['train']))
+            # print(log_str)
             x, y_true = x.float(), y_true.float()
             x, y_true = x.to(self.device), y_true.to(self.device)
 
@@ -79,14 +84,16 @@ class Trainer(object):
 
             samples += x.size(0)
 
-        print_metrics(metrics, samples, 'train', epoch)
+        # print_metrics(metrics, samples, 'train', epoch)
+        self.log_table = save_metrics(metrics, samples, 'train', epoch, self.log_table)
         epoch_loss = metrics['loss'] / samples
 
         self.logger.scalar_summary('loss/train', np.mean(loss_train), epoch)
 
         if epoch % self.args.eval_interval == 0:
             valid_loss, valid_metrics, valid_samples = evaluate(self.model, self.dataloader, self.device)
-            print_metrics(valid_metrics, valid_samples, 'valid', epoch)
+            # print_metrics(valid_metrics, valid_samples, 'valid', epoch)
+            self.log_table = save_metrics(valid_metrics, valid_samples, 'valid', epoch, self.log_table)
             self.logger.scalar_summary('loss/valid', np.mean(valid_loss), epoch)
         if epoch % self.args.save_interval == 0:
             torch.save(self.model.state_dict(), f"./saves/unet_ckpt_%d.pth" % epoch)

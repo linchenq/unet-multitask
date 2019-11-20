@@ -3,6 +3,16 @@ from terminaltables import AsciiTable
 
 from sklearn.metrics import confusion_matrix
 
+def save_metrics(metrics, samples, phase, epoch, table):
+    metric_keys = ["epoch"] + ["phase"] + list(metrics.keys())
+    metric_vals = [f"{epoch}"] + [f"{phase}"] + ["{:6f}".format(metrics[i]/samples) for i in metrics.keys()]
+    if table is None:
+        table = [metric_keys, metric_vals]
+    else:
+        table.append(metric_vals)
+    return table
+
+
 def print_metrics(metrics, samples, phase, epoch):
     metric_keys = list(metrics.keys())
     metric_vals = ["{:6f}".format(metrics[i]/samples) for i in metric_keys]

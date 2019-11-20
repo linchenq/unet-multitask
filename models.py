@@ -17,7 +17,6 @@ class ResUnet(nn.Module):
 
         return ret
 
-
 class Header(nn.Module):
     def __init__(self, in_ch, init_features, depth=5):
         super(Header, self).__init__()
@@ -32,9 +31,9 @@ class Header(nn.Module):
         )
         self.header = ResBlock(self.features[0])
         self.down0, self.enc1 = self._init_layer(1, self.features[0], self.features[1], "enc1")
-        self.down1, self.enc2 = self._init_layer(1, self.features[1], self.features[2], "enc2")
-        self.down2, self.enc3 = self._init_layer(1, self.features[2], self.features[3], "enc3")
-        self.down3, self.enc4 = self._init_layer(1, self.features[3], self.features[4], "enc4")
+        self.down1, self.enc2 = self._init_layer(2, self.features[1], self.features[2], "enc2")
+        self.down2, self.enc3 = self._init_layer(4, self.features[2], self.features[3], "enc3")
+        self.down3, self.enc4 = self._init_layer(8, self.features[3], self.features[4], "enc4")
         self.down4, self.bottleneck = self._init_layer(1, self.features[4], self.features[5], "bottleneck")
 
     def forward(self, x):

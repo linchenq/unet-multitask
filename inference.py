@@ -47,7 +47,7 @@ def main():
     parser = argparse.ArgumentParser(description="U-Net parameter selection")
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--device", type=str, default=cfg.TRAIN.DEVICE)
-    parser.add_argument("--model_path", type=str, default="./saves/unet_ckpt_140.pth")
+    parser.add_argument("--model_path", type=str, default="./saves/unet_ckpt_200.pth")
     args = parser.parse_args()
 
     # asd = "./saves/unet_ckpt_30.pth"
