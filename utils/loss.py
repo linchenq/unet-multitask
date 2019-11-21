@@ -43,7 +43,7 @@ class SuperYoloLayer(nn.Module):
         self.anchor_w = self.scaled_anchors[:, 0:1].view((1, self.num_anchors, 1, 1))
         self.anchor_h = self.scaled_anchors[:, 1:2].view((1, self.num_anchors, 1, 1))
 
-    def generate_output(self, x, target):
+    def generate_output(self, x, target=None):
         FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
 
         num_samples = x.size(0)
@@ -83,7 +83,7 @@ class SuperYoloLayer(nn.Module):
             -1,
         )
 
-        return x, y, w, h, pred_conf, pred_cls, pred_boxes, output
+        return output, x, y, w, h, pred_conf, pred_cls, pred_boxes
 
     def forward(x, targets):
         raise NotImplementedError
@@ -91,9 +91,10 @@ class SuperYoloLayer(nn.Module):
 class YoloLoss(SuperYoloLayer):
 
     def forward(self, x, targets):
+        _, x, y, w, h, pred_conf, pred_cls, pred_boxes = self.generate_output(x, targets)
+
         if targets is None:
             raise ValueError("target cannot be none when computing losses")
-        x, y, w, h, pred_conf, pred_cls, pred_boxes, output = self.generate_output(x, targets)
 
         iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf = build_targets(
             pred_boxes=pred_boxes,
@@ -148,11 +149,10 @@ class YoloLoss(SuperYoloLayer):
 
         return total_loss
 
-# class YoloLayer(SuperYoloLayer):
-
-#     def forward(self, x, targets):
-#         output = self.generate_output(x, targets)
-#         return output
+class YoloLayer(SuperYoloLayer):
+    def forward(self, x):
+        output, x, y, w, h, pred_conf, pred_cls, pred_boxes = self.generate_output(x)
+        return output
 
 # class YoloLoss(nn.Module):
 #     def __init__(self, anchors, num_classes, img_size):
