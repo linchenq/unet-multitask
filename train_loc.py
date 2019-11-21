@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torch.autograd import Variable
 
 from cfgs.config import cfg
 from models import *
@@ -22,8 +23,8 @@ class Trainer(object):
         self.args = args
         self.model = model
         self.dataloader = {
-            'train': DataLoader(dataset['train'], batch_size=self.args.batch_size, shuffle=True),
-            'valid': DataLoader(dataset['valid'], batch_size=self.args.batch_size, shuffle=True)
+            'train': DataLoader(dataset['train'], batch_size=self.args.batch_size, shuffle=True, collate_fn=dataset['train'].collate_fn),
+            'valid': DataLoader(dataset['valid'], batch_size=self.args.batch_size, shuffle=True, collate_fn=dataset['valid'].collate_fn)
         }
 
         # prerequisites
@@ -61,47 +62,69 @@ class Trainer(object):
             time_elapsed = time.time() - since
             print('{:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
-        print(AsciiTable(self.log_table).table)
+        # print(AsciiTable(self.log_table).table)
 
     def run_single_step(self, epoch):
         self.model.train()
+        table = []
+        metrics = [
+            "loss",
+            "x",
+            "y",
+            "w",
+            "h",
+            "conf",
+            "cls",
+            "cls_acc",
+            "recall50",
+            "recall75",
+            "precision",
+            "conf_obj",
+            "conf_noobj",
+            "grid_size"
+        ]
 
-        metrics = defaultdict(float)
-        samples = 0
-        loss_train = []
-
-        for batch_i, (x, y_true) in enumerate(self.dataloader['train']):
+        for batch_i, (x, targets) in enumerate(self.dataloader['train']):
             # log_str = "---- [Phase %s][Epoch %d/%d, Batch %d/%d] ----"% \
             #             ('train', epoch, self.args.epoch, batch_i, len(self.dataloader['train']))
             # print(log_str)
-            x, y_true = x.float(), y_true.float()
-            x, y_true = x.to(self.device), y_true.to(self.device)
+            total_loss = 0
+            losses = []
+
+            x, targets = x.float(), targets.float()
+            x, targets = x.to(self.device), targets.to(self.device)
+            # x, targets = Variable(x.to(self.device)), Variable(targets.to(self.device), requires_grad=False)
 
             self.optimizer.zero_grad()
 
             # forward & backward
             with torch.enable_grad():
-                y_pred = self.model(x)
-                _loss = self.loss.forward(y_pred, y_true, metrics=metrics)
-                loss_train.append(_loss.item())
-                _loss.backward()
+                yolo_list = self.model(x)
+
+                for i in range(3):
+                    _loss = self.loss[i].forward(yolo_list[i], targets)
+                    losses.append(_loss)
+
+                total_loss = sum(losses)
+                total_loss.backward()
                 self.optimizer.step()
 
-            samples += x.size(0)
+                print(f"---- [Total loss: {total_loss.detach().cpu().item()}]")
+
 
         # print_metrics(metrics, samples, 'train', epoch)
-        self.log_table = save_metrics(metrics, samples, 'train', epoch, self.log_table)
-        epoch_loss = metrics['loss'] / samples
+        # self.log_table = save_metrics(metrics, samples, 'train', epoch, self.log_table)
+        # epoch_loss = metrics['loss'] / samples
 
-        self.logger.scalar_summary('loss/train', np.mean(loss_train), epoch)
+        # self.logger.scalar_summary('loss/train', np.mean(loss_train), epoch)
 
-        if epoch % self.args.eval_interval == 0:
-            valid_loss, valid_metrics, valid_samples = evaluate(self.model, self.dataloader, self.device)
+        # if epoch % self.args.eval_interval == 0:
+        #     valid_loss, valid_metrics, valid_samples = evaluate(self.model, self.dataloader, self.device)
             # print_metrics(valid_metrics, valid_samples, 'valid', epoch)
-            self.log_table = save_metrics(valid_metrics, valid_samples, 'valid', epoch, self.log_table)
-            self.logger.scalar_summary('loss/valid', np.mean(valid_loss), epoch)
+            # self.log_table = save_metrics(valid_metrics, valid_samples, 'valid', epoch, self.log_table)
+            # self.logger.scalar_summary('loss/valid', np.mean(valid_loss), epoch)
         if epoch % self.args.save_interval == 0:
-            torch.save(self.model.state_dict(), f"./saves/unet_ckpt_%d.pth" % epoch)
+            torch.save(self.model.state_dict(), f"./saves/loc_ckpt_%d.pth" % epoch)
 
 
 def main():
@@ -149,7 +172,8 @@ def main():
         dataset[name] = SpineLocDataset(list_path=set_path)
 
     # model
-    model = ResUnet(in_channels=cfg.IN_CH, out_channels=cfg.SEG.OUT_CH, init_features=cfg.INIT_FEATURES)
+    model = ResUnet(in_channels=cfg.IN_CH, out_channels=cfg.SEG.OUT_CH, init_features=cfg.INIT_FEATURES,
+                    num_anchors=3, num_classes=6)
     # Training
     trainer = Trainer(args, dataset, model)
     trainer.train()

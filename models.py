@@ -104,7 +104,7 @@ class Trailer(nn.Module):
         trail = self.trail(trail)
 
         output = torch.sigmoid(self.output(trail))
-        return output, yolo3, yolo2, yolo1
+        return yolo3, yolo2, yolo1
 
     def _init_layer(self, in_ch, out_ch,name):
         up = Upsample(mode="deconv", in_ch=in_ch, out_ch=out_ch)
@@ -125,9 +125,9 @@ if __name__ == '__main__':
         img = Variable(torch.rand(2, 3, 416, 416))
 
         net = ResUnet(in_channels=3, out_channels=4, init_features=32, num_anchors=3, num_classes=6)
-        out, yolo3, yolo2, yolo1 = net(img)
+        yolo3, yolo2, yolo1 = net(img)
 
-        print(out.size())
+        # print(out.size())
         # print(yolo3.size())
         # print(yolo2.size())
         # print(yolo1.size())
