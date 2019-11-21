@@ -20,8 +20,8 @@ class _Conv2d3x3(nn.Module):
 
 class _Conv2d1x1(nn.Module):
     def __init__(self, in_ch, out_ch):
-        super(_Conv2d3x3, self).__init__()
-        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=1, padding=1)
+        super(_Conv2d1x1, self).__init__()
+        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=1)
         self.bn1 = nn.BatchNorm2d(out_ch)
         self.leaky1 = nn.LeakyReLU(0.1)
 
@@ -63,11 +63,12 @@ class ResBlock(nn.Module):
 
 class YoloBlock(nn.Module):
     def __init__(self, n_blocks, in_ch, out_ch, num_filters):
+        super(YoloBlock, self).__init__()
         blocks = []
         for i in range(n_blocks):
-            blocks.append(f"YOLO_{i}_1x1_{in_ch}_{out_ch}", _Conv2d1x1(in_ch, out_ch))
-            blocks.append(f"YOLO_{i}_3x3_{in_ch}_{out_ch}", _Conv2d3x3(out_ch, in_ch))
-        blocks.append(f"YOLO_final_1x1_{in_ch}_{out_ch}", _Conv2d1x1(in_ch, out_ch))
+            blocks.append((f"YOLO_{i}_1x1_{in_ch}_{out_ch}", _Conv2d1x1(in_ch, out_ch)))
+            blocks.append((f"YOLO_{i}_3x3_{in_ch}_{out_ch}", _Conv2d3x3(out_ch, in_ch)))
+        blocks.append((f"YOLO_final_1x1_{in_ch}_{out_ch}", _Conv2d1x1(in_ch, out_ch)))
         self.blocks = nn.Sequential(OrderedDict(blocks))
 
         self.conv3x3 = _Conv2d3x3(out_ch, in_ch)

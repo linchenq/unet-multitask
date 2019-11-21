@@ -54,3 +54,7 @@ __C.SEG.FOLDER = 'C:/Research/LumbarSpine/OriginalData/RealSegmentationData/'
 # Localization settings
 __C.LOC = edict()
 
+__C.LOC.NUM_CLASSES = 6
+
+__C.LOC.ANCHORS = [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [7, 7], [8, 8], [9, 9]]
+

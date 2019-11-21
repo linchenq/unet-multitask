@@ -1,7 +1,10 @@
 import os
 import numpy as np
 import hdf5storage
+from PIL import Image
+import torch
 from torch.utils.data import Dataset
+import torchvision.transforms as transforms
 
 from cfgs.config import cfg
 
@@ -29,6 +32,34 @@ class SpineSegDataset:
             mask[i, ...] = mat_data[cfg.SEG.REP[i]]
 
         return [image, mask]
+
+class SpineLocDataset:
+    def __init__(self, list_path):
+        with open(list_path, "r") as file:
+            self.img_files = file.readlines()
+
+        self.label_files = [
+            path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt")
+            for path in self.img_files
+        ]
+
+    def __getitem__(self, index):
+        img_path = self.img_files[index % len(self.img_files)].rstrip()
+        img = transforms.ToTensor()(Image.open(img_path).convert('L'))
+
+        # Handle images with less than three channels
+        if len(img.shape) != 3:
+            img = img.unsqueeze(0)
+            img = img.expand((3, img.shape[1:]))
+
+        label_path = self.label_files[index % len(self.img_files)].rstrip()
+
+        targets = None
+        if os.path.exists(label_path):
+            boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
+
+        return img_path, img, targets
+
 
 
 

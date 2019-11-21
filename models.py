@@ -6,14 +6,17 @@ from torchsummary import summary
 from utils.ops import *
 
 class ResUnet(nn.Module):
-    def __init__(self, in_channels, out_channels, init_features):
+    def __init__(self, in_channels, out_channels, init_features, num_anchors, num_classes):
         super(ResUnet, self).__init__()
         self.header = Header(in_ch=in_channels, init_features=init_features)
-        self.trailer = Trailer(out_ch=out_channels, init_features=init_features)
+        self.trailer = Trailer(out_ch=out_channels,
+                               init_features=init_features,
+                               num_anchors=num_anchors,
+                               num_classes=num_classes)
 
     def forward(self, x):
-        filters = self.header(x)
-        ret = self.trailer(x, filters)
+        head, enc1, enc2, enc3, enc4, bottleneck = self.header(x)
+        ret = self.trailer(head, enc1, enc2, enc3, enc4, bottleneck)
 
         return ret
 
@@ -44,7 +47,7 @@ class Header(nn.Module):
         enc4 = self.enc4(self.down3(enc3))
         bottleneck = self.bottleneck(self.down4(enc4))
 
-        return (head, enc1, enc2, enc3, enc4, bottleneck)
+        return head, enc1, enc2, enc3, enc4, bottleneck
 
     def _init_layer(self, n_block, in_ch, out_ch, name):
         blocks = []
@@ -58,10 +61,13 @@ class Header(nn.Module):
 
 
 class Trailer(nn.Module):
-    def __init__(self, out_ch, init_features, depth=5):
+    def __init__(self, out_ch, init_features, num_anchors, num_classes, depth=5):
         super(Trailer, self).__init__()
         self.out_ch = out_ch
         self.features = [2**i for i in range(depth+1)] * init_features
+        self.num_anchors = num_anchors
+        self.num_classes = num_classes
+        self.yolo_filter = num_anchors * (5 + num_classes)
 
         self.up5, self.dec4 = self._init_layer(self.features[5], self.features[4], "dec4")
         self.up4, self.dec3 = self._init_layer(self.features[4], self.features[3], "dec3")
@@ -69,15 +75,24 @@ class Trailer(nn.Module):
         self.up2, self.dec1 = self._init_layer(self.features[2], self.features[1], "dec1")
         self.up1, self.trail = self._init_layer(self.features[1], self.features[0], "trail")
 
+        # yolo layers
+        # n_blocks, in_ch, out_ch, num_filters):
+
+        self.yolo3 = YoloBlock(n_blocks=2, in_ch=self.features[5], out_ch=self.features[4], num_filters=self.yolo_filter)
+        self.yolo2 = YoloBlock(n_blocks=0, in_ch=self.features[4], out_ch=self.features[3], num_filters=self.yolo_filter)
+        self.yolo1 = YoloBlock(n_blocks=0, in_ch=self.features[3], out_ch=self.features[2], num_filters=self.yolo_filter)
+
         self.output = nn.Conv2d(self.features[0], self.out_ch, kernel_size=1)
 
-    def forward(self, x, _filters):
-        (head, enc1, enc2, enc3, enc4, bottleneck) = _filters
+    def forward(self, head, enc1, enc2, enc3, enc4, bottleneck):
+        yolo3 = self.yolo3(bottleneck)
         dec4 = torch.cat((enc4, self.up5(bottleneck)), dim=1)
         dec4 = self.dec4(dec4)
+        yolo2 = self.yolo2(dec4)
 
         dec3 = torch.cat((enc3, self.up4(dec4)), dim=1)
         dec3 = self.dec3(dec3)
+        yolo1 = self.yolo1(dec3)
 
         dec2 = torch.cat((enc2, self.up3(dec3)), dim=1)
         dec2 = self.dec2(dec2)
@@ -89,7 +104,7 @@ class Trailer(nn.Module):
         trail = self.trail(trail)
 
         output = torch.sigmoid(self.output(trail))
-        return output
+        return output, yolo3, yolo2, yolo1
 
     def _init_layer(self, in_ch, out_ch,name):
         up = Upsample(mode="deconv", in_ch=in_ch, out_ch=out_ch)
@@ -98,28 +113,21 @@ class Trailer(nn.Module):
         return up, dec
 
 
-class YoloLayer(nn.Module):
-    def __init__(self, anchors, num_classes):
-        super(YoloLayer, self).__init__()
-        self.anchors = anchors
-        self.num_classes = num_classes
-
-        pass
-
-
-
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = ResUnet(in_channels=3, out_channels=4, init_features=32)
+    model = ResUnet(in_channels=3, out_channels=4, init_features=32, num_anchors=3, num_classes=6)
     model = model.to(device)
 
-    summary(model, input_size=(3, 512, 512))
+    summary(model, input_size=(3, 416, 416))
 
     if True:
         from torch.autograd import Variable
-        img = Variable(torch.rand(2, 3, 512, 512))
+        img = Variable(torch.rand(2, 3, 416, 416))
 
-        net = ResUnet(in_channels=3, out_channels=4, init_features=32)
-        out = net(img)
+        net = ResUnet(in_channels=3, out_channels=4, init_features=32, num_anchors=3, num_classes=6)
+        out, yolo3, yolo2, yolo1 = net(img)
 
         print(out.size())
+        # print(yolo3.size())
+        # print(yolo2.size())
+        # print(yolo1.size())
