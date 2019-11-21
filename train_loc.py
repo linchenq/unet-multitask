@@ -31,8 +31,12 @@ class Trainer(object):
         os.makedirs(self.args.save_path, exist_ok=True)
 
         self.device = torch.device(self.args.device if torch.cuda.is_available() else 'cpu')
-
-        self.loss = UnetLoss()
+        # ############ TEMP ANNOTATION ################
+        # self.loss = UnetLoss()
+        # ############ TEMP ANNOTATION ################
+        self.loss = []
+        for i in range(3):
+            self.loss.append(YoloLoss(cfg.LOC.ANCHORS[3*i:3*(i+1)], cfg.LOC.NUM_CLASSES, img_size=512))
 
         # optimizer
         self.optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.args.lr)
@@ -120,18 +124,8 @@ def main():
     '''
     TODO: Combine segmentation dataset with localization
     '''
-    dataset_path = './datasets/segmentation/'
-    trainset, validset, testset = None, None, None
-    dataset = {
-        'train': trainset,
-        'valid': validset,
-        'test': testset
-    }
-    for name in ['train', 'valid', 'test']:
-        set_path = os.path.join(dataset_path, f"{name}.txt")
-        dataset[name] = SpineSegDataset(list_path=set_path)
-
-    # dataset_path = './datasets/localization/'
+    # ############ TEMP ANNOTATION ################
+    # dataset_path = './datasets/segmentation/'
     # trainset, validset, testset = None, None, None
     # dataset = {
     #     'train': trainset,
@@ -140,7 +134,19 @@ def main():
     # }
     # for name in ['train', 'valid', 'test']:
     #     set_path = os.path.join(dataset_path, f"{name}.txt")
-    #     dataset[name] = SpineLocDataset(list_path=set_path)
+    #     dataset[name] = SpineSegDataset(list_path=set_path)
+    # ############ TEMP ANNOTATION ################
+
+    dataset_path = './datasets/localization/'
+    trainset, validset, testset = None, None, None
+    dataset = {
+        'train': trainset,
+        'valid': validset,
+        'test': testset
+    }
+    for name in ['train', 'valid', 'test']:
+        set_path = os.path.join(dataset_path, f"{name}.txt")
+        dataset[name] = SpineLocDataset(list_path=set_path)
 
     # model
     model = ResUnet(in_channels=cfg.IN_CH, out_channels=cfg.SEG.OUT_CH, init_features=cfg.INIT_FEATURES)
@@ -151,3 +157,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

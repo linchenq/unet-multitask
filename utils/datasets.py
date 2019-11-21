@@ -58,7 +58,7 @@ class SpineLocDataset:
         if os.path.exists(label_path):
             boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
 
-        return img_path, img, targets
+        return [img, targets]
 
 
 
