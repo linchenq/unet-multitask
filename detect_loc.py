@@ -48,21 +48,17 @@ class Inference(object):
             x = x.float()
             x = x.to(self.device)
 
-        '''
-        ### TODO: BUG ISSUES NEED TO BE FIXED:
-        ### REASONS: The output or yolo layers is xywh, but the required output for detection 
-        ###          should be xyxy
-        '''
-
             with torch.no_grad():
                 yolo_list = self.model(x)
                 yolo_output = []
                 for i in range(3):
                     yolo_layer = YoloLayer(cfg.LOC.ANCHORS[3*i:3*(i+1)], cfg.LOC.NUM_CLASSES, img_size=512)
-                    yolo_output.append(yolo_layer.forward(yolo_list[i]))
-                yolo_output = (torch.cat(yolo_output, 1)).detach().cpu()
+                    _ = yolo_layer.forward(yolo_list[i])
+                    yolo_output.append(_)
+                # yolo_output = (torch.cat(yolo_output, 1)).detach().cpu()
+                yolo_output = torch.cat(yolo_output, 1)
 
-                detection = non_max_suppression(yolo_output, 0.1, 0.4)
+                detection = non_max_suppression(yolo_output, 0.7, 0.4)
                 img_detections.extend(detection)
 
         cmap = plt.get_cmap("tab20b")
@@ -77,7 +73,7 @@ class Inference(object):
                 unique_labels = img_detection[:, -1].cpu().unique()
                 n_cls_preds = len(unique_labels)
                 bbox_colors = random.sample(colors, n_cls_preds)
-    
+
                 # TODO: Only modified on the lumbar Dataset
                 #### Since each image could only contain one type of unique disks
                 unique_dict = {}
@@ -137,7 +133,7 @@ def main():
     parser = argparse.ArgumentParser(description="U-Net parameter selection")
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--device", type=str, default=cfg.TRAIN.DEVICE)
-    parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_145.pth")
+    parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_30.pth")
     args = parser.parse_args()
 
     dataset_path = './datasets/localization/'

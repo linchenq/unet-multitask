@@ -62,16 +62,18 @@ class SpineLocDataset:
         targets = None
         if os.path.exists(label_path):
             boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
+
             # Extract coordinates for unpadded + unscaled image
-            x1 = (boxes[:, 1] - boxes[:, 3] / 2)
-            y1 = (boxes[:, 2] - boxes[:, 4] / 2)
-            x2 = (boxes[:, 1] + boxes[:, 3] / 2)
-            y2 = (boxes[:, 2] + boxes[:, 4] / 2)
+            x1 = boxes[:, 1] - boxes[:, 3] / 2
+            y1 = boxes[:, 2] - boxes[:, 4] / 2
+            x2 = boxes[:, 1] + boxes[:, 3] / 2
+            y2 = boxes[:, 2] + boxes[:, 4] / 2
+
             # Returns (x, y, w, h)
             boxes[:, 1] = ((x1 + x2) / 2) / w
             boxes[:, 2] = ((y1 + y2) / 2) / h
-            boxes[:, 3] *= 1. / w
-            boxes[:, 4] *= 1. / h
+            boxes[:, 3] *= 1 / w
+            boxes[:, 4] *= 1 / h
 
             targets = torch.zeros((len(boxes), 6))
             targets[:, 1:] = boxes
@@ -80,18 +82,15 @@ class SpineLocDataset:
 
     def collate_fn(self, batch):
         imgs, targets = list(zip(*batch))
-        # Remove empty placeholder targets
+
         targets = [boxes for boxes in targets if boxes is not None]
-        # Add sample index to targets
+
         for i, boxes in enumerate(targets):
             boxes[:, 0] = i
         targets = torch.cat(targets, 0)
-        # # Selects new image size every tenth batch
-        # if self.multiscale and self.batch_count % 10 == 0:
-        #     self.img_size = random.choice(range(self.min_size, self.max_size + 1, 32))
-        # Resize images to input shape
+
         imgs = torch.stack(imgs)
-        # self.batch_count += 1
+
         return imgs, targets
 
 

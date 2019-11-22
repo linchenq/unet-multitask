@@ -4,23 +4,17 @@ from sklearn.metrics import confusion_matrix
 
 import torch
 
-def save_metrics(metrics, samples, phase, epoch, table):
+def log_metrics(epoch, phase, metrics, log_table):
     metric_keys = ["epoch"] + ["phase"] + list(metrics.keys())
-    metric_vals = [f"{epoch}"] + [f"{phase}"] + ["{:6f}".format(metrics[i]/samples) for i in metrics.keys()]
+    metric_vals = [f"{epoch}"] + [f"{phase}"] + ["{:6f}".format(metrics[i]) for i in metrics.keys()]
+
     if table is None:
         table = [metric_keys, metric_vals]
     else:
+        assert(table[0] == metric_keys)
         table.append(metric_vals)
+    # AsciiTable(metric_table).table
     return table
-
-
-def print_metrics(metrics, samples, phase, epoch):
-    metric_keys = list(metrics.keys())
-    metric_vals = ["{:6f}".format(metrics[i]/samples) for i in metric_keys]
-    metric_keys = ["epoch"] + ["phase"] + metric_keys
-    metric_vals = [f"{epoch}"] + [f"{phase}"] + metric_vals
-    metric_table = [metric_keys, metric_vals]
-    print (AsciiTable(metric_table).table)
 
 
 def dice_coeff(im1, im2):
