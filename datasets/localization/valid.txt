@@ -1,0 +1,3 @@
+C:/Research/LumbarSpine/Github/unet-multitask/datasets/localization/images/ImageShapePair_P1_V24.jpg
+C:/Research/LumbarSpine/Github/unet-multitask/datasets/localization/images/ImageShapePair_P1_V13.jpg
+C:/Research/LumbarSpine/Github/unet-multitask/datasets/localization/images/ImageShapePair_P1_V20.jpg

@@ -1,0 +1,57 @@
+<annotation>
+  <folder>GT30</folder>
+  <filename>ImageShapePair_P1_V4</filename>
+  <source>
+    <database>The Lumbar GT30 Database</database>
+    <annotation>LUMBAR GT30</annotation>
+  </source>
+  <size>
+    <width>512</width>
+    <height>512</height>
+    <depth>1</depth>
+  </size>
+  <object>
+    <name>D1</name>
+    <bndbox>
+      <xmin>220</xmin>
+      <ymin>117</ymin>
+      <xmax>309</xmax>
+      <ymax>157</ymax>
+    </bndbox>
+    <name>D2</name>
+    <bndbox>
+      <xmin>200</xmin>
+      <ymin>174</ymin>
+      <xmax>294</xmax>
+      <ymax>213</ymax>
+    </bndbox>
+    <name>D3</name>
+    <bndbox>
+      <xmin>188</xmin>
+      <ymin>240</ymin>
+      <xmax>279</xmax>
+      <ymax>276</ymax>
+    </bndbox>
+    <name>D4</name>
+    <bndbox>
+      <xmin>194</xmin>
+      <ymin>299</ymin>
+      <xmax>285</xmax>
+      <ymax>348</ymax>
+    </bndbox>
+    <name>D5</name>
+    <bndbox>
+      <xmin>220</xmin>
+      <ymin>349</ymin>
+      <xmax>300</xmax>
+      <ymax>411</ymax>
+    </bndbox>
+    <name>S</name>
+    <bndbox>
+      <xmin>244</xmin>
+      <ymin>362</ymin>
+      <xmax>327</xmax>
+      <ymax>421</ymax>
+    </bndbox>
+  </object>
+</annotation>
