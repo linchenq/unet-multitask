@@ -126,8 +126,3 @@ if __name__ == '__main__':
 
         net = ResUnet(in_channels=3, out_channels=4, init_features=32, num_anchors=3, num_classes=6)
         yolo3, yolo2, yolo1 = net(img)
-
-        # print(out.size())
-        # print(yolo3.size())
-        # print(yolo2.size())
-        # print(yolo1.size())

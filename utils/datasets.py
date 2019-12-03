@@ -64,16 +64,16 @@ class SpineLocDataset:
             boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
 
             # Extract coordinates for unpadded + unscaled image
-            x1 = boxes[:, 1] - boxes[:, 3] / 2
-            y1 = boxes[:, 2] - boxes[:, 4] / 2
-            x2 = boxes[:, 1] + boxes[:, 3] / 2
-            y2 = boxes[:, 2] + boxes[:, 4] / 2
+            x1 = w * (boxes[:, 1] - boxes[:, 3] / 2)
+            y1 = h * (boxes[:, 2] - boxes[:, 4] / 2)
+            x2 = w * (boxes[:, 1] + boxes[:, 3] / 2)
+            y2 = h * (boxes[:, 2] + boxes[:, 4] / 2)
 
             # Returns (x, y, w, h)
-            boxes[:, 1] = ((x1 + x2) / 2) / w
-            boxes[:, 2] = ((y1 + y2) / 2) / h
-            boxes[:, 3] *= 1 / w
-            boxes[:, 4] *= 1 / h
+            boxes[:, 1] = ((x1 + x2) / 2.) / w
+            boxes[:, 2] = ((y1 + y2) / 2.) / h
+            boxes[:, 3] *= w / w
+            boxes[:, 4] *= h / h
 
             targets = torch.zeros((len(boxes), 6))
             targets[:, 1:] = boxes

@@ -133,7 +133,7 @@ def main():
     parser = argparse.ArgumentParser(description="U-Net parameter selection")
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--device", type=str, default=cfg.TRAIN.DEVICE)
-    parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_30.pth")
+    parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_35.pth")
     args = parser.parse_args()
 
     dataset_path = './datasets/localization/'

@@ -16,6 +16,7 @@ from utils.datasets import *
 from utils.loss import *
 from utils.logger import *
 from utils.utils import *
+from utils.metrics import *
 from evaluate import *
 
 class Trainer(object):
@@ -42,10 +43,10 @@ class Trainer(object):
         # Loss function
         num_anchors = 3
         self.loss = []
-        for index in range(len(cfg.LOC.ANCHORS) / num_anchors):
-            self.loss.append(YoloLoss(cfg.LOC.ANCHORS,
+        for index in range(int(len(cfg.LOC.ANCHORS) / num_anchors)):
+            self.loss.append(YoloLoss(cfg.LOC.ANCHORS[index*num_anchors: (index+1)*num_anchors],
                                       cfg.LOC.NUM_CLASSES,
-                                      img_size=__C.H))
+                                      img_size=cfg.H))
 
         # optimizer
         self.optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()),
@@ -60,33 +61,17 @@ class Trainer(object):
 
     def train(self):
         num_epochs = self.args.epoch
-        loc_metrics = [
-                "grid_size"
-                "loss",
-                "x",
-                "y",
-                "w",
-                "h",
-                "conf",
-                "cls",
-                "cls_acc",
-                "recall50",
-                "recall75",
-                "precision",
-                "conf_obj",
-                "conf_noobj"
-        ]
 
         for epoch in tqdm(range(num_epochs)):
             since = time.time()
 
-            self.run_single_step(epoch, loc_metrics)
+            self.run_single_step(epoch)
             self.exp_lr_scheduler.step()
 
             time_elapsed = time.time() - since
             print('{:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
-    def run_single_step(self, epoch, loc_metrics):
+    def run_single_step(self, epoch):
         self.model.train()
 
         for batch_i, (x, targets) in enumerate(self.dataloader['train']):
@@ -96,6 +81,15 @@ class Trainer(object):
             self.optimizer.zero_grad()
 
             yolo_loss, losses = 0, []
+            epoch_metrics = {
+                    "grid_size": [],
+                    "total_loss": [],
+                    "x": [], "y": [], "w": [], "h": [],
+                    "conf": [], "cls": [],
+                    "cls_acc": [],
+                    "recall50": [], "recall75": [], "precision": [],
+                    "conf_obj": [], "conf_noobj": []
+            }
             with torch.enable_grad():
                 yolo = self.model(x)
                 for i in range(len(yolo)):
@@ -103,36 +97,21 @@ class Trainer(object):
                     losses.append(i_loss)
                     yolo_loss += i_loss
 
+                    # metrics logger
+                    for k, v in self.loss[i].metrics.items():
+                        epoch_metrics[k].append(v)
+
                 yolo_loss.backward()
                 self.optimizer.step()
 
+                # metrics
+                print(yolo_metrics(epoch=epoch, phase="train", metrics=epoch_metrics))
 
-            # log_str = "---- [Phase %s][Epoch %d/%d, Batch %d/%d] ----"% \
-            #             ('train', epoch, self.args.epoch, batch_i, len(self.dataloader['train']))
-            # print(log_str)
-            total_loss = 0
-            losses = []
+                # tensorboard
+                vis_step = len(self.dataloader['train']) * epoch + batch_i
+                logger.scalar_summary()
 
-            x, targets = x.float(), targets.float()
-            x, targets = x.to(self.device), targets.to(self.device)
-            # x, targets = Variable(x.to(self.device)), Variable(targets.to(self.device), requires_grad=False)
-
-            self.optimizer.zero_grad()
-
-            # forward & backward
-            with torch.enable_grad():
-                yolo_list = self.model(x)
-
-                for i in range(3):
-                    _loss = self.loss[i].forward(yolo_list[i], targets)
-                    losses.append(_loss)
-
-                total_loss = sum(losses)
-                total_loss.backward()
-                self.optimizer.step()
-
-                print(f"---- [Total loss: {total_loss.detach().cpu().item()}]")
-
+        # tensorboard
 
         # print_metrics(metrics, samples, 'train', epoch)
         # self.log_table = save_metrics(metrics, samples, 'train', epoch, self.log_table)
@@ -145,13 +124,14 @@ class Trainer(object):
             # print_metrics(valid_metrics, valid_samples, 'valid', epoch)
             # self.log_table = save_metrics(valid_metrics, valid_samples, 'valid', epoch, self.log_table)
             # self.logger.scalar_summary('loss/valid', np.mean(valid_loss), epoch)
+
         if epoch % self.args.save_interval == 0:
             torch.save(self.model.state_dict(), f"./saves/loc_ckpt_%d.pth" % epoch)
 
 
 def main():
     # argparse
-    parser = argparse.ArgumentParser(description="U-Net parameter selection")
+    parser = argparse.ArgumentParser(description="ResUNet")
     parser.add_argument("--batch_size", type=int, default=cfg.TRAIN.BATCH_SIZE)
     parser.add_argument("--epoch", type=int, default=cfg.TRAIN.EPOCH)
     parser.add_argument("--lr", type=float, default=cfg.TRAIN.LR)
@@ -167,16 +147,14 @@ def main():
     parser.add_argument("--device", type=str, default=cfg.TRAIN.DEVICE)
     args = parser.parse_args()
 
-    # dataset
-
+    # dataset prepration
     dataset_path = './datasets/localization/'
     trainset, validset, testset = None, None, None
     dataset = {
         'train': trainset,
         'valid': validset,
-        'test': testset
     }
-    for name in ['train', 'valid', 'test']:
+    for name in ['train', 'valid']:
         set_path = os.path.join(dataset_path, f"{name}.txt")
         dataset[name] = SpineLocDataset(list_path=set_path)
 

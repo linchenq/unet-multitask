@@ -90,7 +90,6 @@ class SuperYoloLayer(nn.Module):
 
 
 class YoloLoss(SuperYoloLayer):
-
     def forward(self, x, targets=None):
         output, x, y, w, h, pred_conf, pred_cls, pred_boxes = self.generate_output(x, targets)
 
@@ -134,7 +133,7 @@ class YoloLoss(SuperYoloLayer):
 
         self.metrics = {
             "grid_size": self.grid_size,
-            "loss": total_loss.detach().cpu().item(),
+            "total_loss": total_loss.detach().cpu().item(),
             "x": loss_x.detach().cpu().item(),
             "y": loss_y.detach().cpu().item(),
             "w": loss_w.detach().cpu().item(),
