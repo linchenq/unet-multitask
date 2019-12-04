@@ -2,7 +2,7 @@ import os
 import argparse
 import time
 from collections import defaultdict
-from tqdm import tqdm
+import tqdm
 import numpy as np
 
 import torch
@@ -63,7 +63,7 @@ class Trainer(object):
     def train(self):
         num_epochs = self.args.epoch
 
-        for epoch in tqdm(range(num_epochs)):
+        for epoch in tqdm.tqdm(range(num_epochs)):
             since = time.time()
 
             self.run_single_step(epoch)
@@ -106,7 +106,7 @@ class Trainer(object):
                 yolo_loss.backward()
                 self.optimizer.step()
 
-            # metrics
+            # metrics for yolo loss
             out_metric = yolo_metrics(epoch=epoch, phase="train", metrics=epoch_metrics)
             print(out_metric)
             self.logger.log_summary(mode="INFO", msg=out_metric)
@@ -121,14 +121,9 @@ class Trainer(object):
             self.logger.list_of_scalars_summary(vis_metrics, vis_step)
 
         if epoch % self.args.eval_interval == 0:
-            # TODO : FINISH EVAL PART
-            pass
-
-        # if epoch % self.args.eval_interval == 0:
-        #     valid_loss, valid_metrics, valid_samples = evaluate(self.model, self.dataloader, self.device)
-            # print_metrics(valid_metrics, valid_samples, 'valid', epoch)
-            # self.log_table = save_metrics(valid_metrics, valid_samples, 'valid', epoch, self.log_table)
-            # self.logger.scalar_summary('loss/valid', np.mean(valid_loss), epoch)
+            evaluate(model=self.model, dataset=self.dataloader, device=self.device,
+                     iou_thres=0.5, conf_thres=0.001, nms_thres=0.5, img_size=cfg.H,
+                     epoch=epoch, logger=self.logger)
 
         if epoch % self.args.save_interval == 0:
             torch.save(self.model.state_dict(), f"./saves/loc_ckpt_%d.pth" % epoch)

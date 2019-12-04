@@ -25,11 +25,11 @@ __C.TRAIN.SAVE_PATH = "./saves"
 # device
 __C.TRAIN.DEVICE = "cuda:0"
 # training epoches
-__C.TRAIN.EPOCH = 40
+__C.TRAIN.EPOCH = 5
 # save interval
-__C.TRAIN.SAVE_INTERVAL = 5
+__C.TRAIN.SAVE_INTERVAL = 1
 # evaluate interval
-__C.TRAIN.EVAL_INTERVAL = 1
+__C.TRAIN.EVAL_INTERVAL = 5
 # decay step for scheduler
 __C.TRAIN.LR_SCHEDULER = 30
 # learning rate
@@ -60,7 +60,7 @@ __C.LOC.ANCHORS = [[91.84, 49.6], [93.76, 39.36], [96.96, 56.64],
                    [84.8, 41.92], [89.28, 37.12], [90.24, 33.92],
                    [74.24, 54.4], [80.32, 58.56], [81.92, 45.44]]
 
-__C.LOG.NUM_ANCHORS = 3
+__C.LOC.NUM_ANCHORS = 3
 
 __C.LOC.NUM_CLASSES = 6
 

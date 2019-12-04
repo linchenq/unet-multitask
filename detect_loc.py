@@ -34,8 +34,16 @@ class Inference(object):
 
         self.device = torch.device(self.args.device if torch.cuda.is_available() else 'cpu')
         self.model.to(self.device)
+        num_anchors = cfg.LOC.NUM_ANCHORS
+        self.yolo_layers = []
+        for index in range(int(len(cfg.LOC.ANCHORS) / num_anchors)):
+            self.yolo_layers.append(YoloLayer(cfg.LOC.ANCHORS[index*num_anchors: (index+1)*num_anchors],
+                                              cfg.LOC.NUM_CLASSES,
+                                              img_size=cfg.H))
 
     def inference(self):
+        COUNT = 0
+
         self.model.load_state_dict(torch.load(self.args.model_path))
         self.model.eval()
 
@@ -49,16 +57,14 @@ class Inference(object):
             x = x.to(self.device)
 
             with torch.no_grad():
-                yolo_list = self.model(x)
-                yolo_output = []
-                for i in range(3):
-                    yolo_layer = YoloLayer(cfg.LOC.ANCHORS[3*i:3*(i+1)], cfg.LOC.NUM_CLASSES, img_size=512)
-                    _ = yolo_layer.forward(yolo_list[i])
-                    yolo_output.append(_)
-                # yolo_output = (torch.cat(yolo_output, 1)).detach().cpu()
-                yolo_output = torch.cat(yolo_output, 1)
+                yolo = self.model(x)
+                yolo_out = []
 
-                detection = non_max_suppression(yolo_output, 0.7, 0.4)
+                for i in range(len(yolo)):
+                    yolo_out.append(self.yolo_layers[i].forward(yolo[i]))
+                yolo_out = torch.cat(yolo_out, 1)
+
+                detection = non_max_suppression(yolo_out, 0.7, 0.4)
                 img_detections.extend(detection)
 
         cmap = plt.get_cmap("tab20b")
@@ -66,16 +72,20 @@ class Inference(object):
 
         for img_i, (img, img_detection) in enumerate(zip(imgs, img_detections)):
             print("(%d) Image Under Detection" % (img_i))
+
+            plt.figure()
             plt.imshow(img.numpy()[0, 0], cmap='gray')
 
             if img_detection is not None:
-                # Rescale boxes to original image
                 unique_labels = img_detection[:, -1].cpu().unique()
                 n_cls_preds = len(unique_labels)
                 bbox_colors = random.sample(colors, n_cls_preds)
 
-                # TODO: Only modified on the lumbar Dataset
-                #### Since each image could only contain one type of unique disks
+                """
+                    START
+                    Modify img_detection to ignore duplicated disks
+                    Since each image could only contain one type of unique disks
+                """
                 unique_dict = {}
                 for x1, y1, x2, y2, conf, cls_conf, cls_pred in img_detection:
                     cur = classes[int(cls_pred)]
@@ -89,43 +99,35 @@ class Inference(object):
                     add_tensor = torch.Tensor([i for i in v])
                     new_detections = torch.cat((new_detections, add_tensor), 0)
                 new_detections = new_detections.view(-1, 7)
-                #### END
-    
-                # TODO: Only modified on the lumbar Dataset
-                #### Since each image could only contain one type of unique disks
-                # for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
+                """
+                    END
+                """
+
                 for x1, y1, x2, y2, conf, cls_conf, cls_pred in new_detections:
-                #### END
-    
+
                     print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
     
                     box_w = x2 - x1
                     box_h = y2 - y1
-    
+
                     color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
-                    # Create a Rectangle patch
                     bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
-                    # Add the bbox to the plot
-                    # ax.add_patch(bbox)
                     plt.gca().add_patch(bbox)
-                    # Add label
-                    # 1. Add text
                     plt.text(
                         (0.7 * x1),
                         y1,
                         s=classes[int(cls_pred)],
                         color="white",
                         verticalalignment="top"
-                        # bbox={"color": color, "pad": 0},
                     )
-                    # 2. OR Add anotation
-                    # plt.annotate(
-                    #     classes[int(cls_pred)],
-                    #     xy=(x1, y1),
-                    #     xytext=((3.0*x1-x2)/2.0, y1),
-                    #     color='w',
-                    #     arrowprops=dict(arrowstyle='->',connectionstyle='arc3',color='white')
-                    # )
+
+            plt.axis("off")
+            plt.gca().xaxis.set_major_locator(NullLocator())
+            plt.gca().yaxis.set_major_locator(NullLocator())
+            plt.savefig(f"output/{COUNT}.jpg", bbox_inches="tight", pad_inches=0.0)
+            COUNT += 1
+            plt.show()
+            plt.close()
 
 
 def main():
@@ -133,7 +135,7 @@ def main():
     parser = argparse.ArgumentParser(description="U-Net parameter selection")
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--device", type=str, default=cfg.TRAIN.DEVICE)
-    parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_35.pth")
+    parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_2.pth")
     args = parser.parse_args()
 
     dataset_path = './datasets/localization/'

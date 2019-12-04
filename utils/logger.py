@@ -8,14 +8,14 @@ class Logger(object):
         self.writer = tf.summary.FileWriter(log_dir)
 
         """Create a file writter logging to .log"""
-        LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-        DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
-        LOG_FILENAME = "../logs/model.log"
-
-        logging.basicConfig(filename=LOG_FILENAME,
-                            level=logging.DEBUG,
-                            format=LOG_FORMAT,
-                            datefmt=DATE_FORMAT)
+        self.logger = logging.getLogger("UNET")
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('./logs/model.log')
+        fh.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
+        self.logger.propagate = False
 
     def scalar_summary(self, tag, value, step):
         """Log a scalar variable."""
@@ -29,8 +29,10 @@ class Logger(object):
 
     def log_summary(self, mode, msg):
         if mode == "INFO":
-            logging.info(msg)
+            self.logger.info(msg)
         elif mode == "WARNING":
-            logging.warning(msg)
+            self.logger.warning(msg)
+        elif mode == "DEBUG":
+            self.logger.debug(msg)
         else:
             raise NotImplementedError
