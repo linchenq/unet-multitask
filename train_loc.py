@@ -32,16 +32,21 @@ class Trainer(object):
         os.makedirs(self.args.log_path, exist_ok=True)
         os.makedirs(self.args.save_path, exist_ok=True)
 
+        # Log settings
+        self.logger = Logger(self.args.log_path)
+
         # load pretrained weights
         if self.args.pretrained_weights is not None:
             if self.args.pretrained_weights.endswith(".pth"):
                 self.model.load_state_dict(torch.load(self.args.pretrained_weights))
+            else:
+                self.logger.log_summary(mode="WARNING", msg="Unknown pretrained weights or models")
 
         self.device = torch.device(self.args.device if torch.cuda.is_available() else 'cpu')
         self.model.to(self.device)
 
         # Loss function
-        num_anchors = 3
+        num_anchors = cfg.LOC.NUM_ANCHORS
         self.loss = []
         for index in range(int(len(cfg.LOC.ANCHORS) / num_anchors)):
             self.loss.append(YoloLoss(cfg.LOC.ANCHORS[index*num_anchors: (index+1)*num_anchors],
@@ -55,10 +60,6 @@ class Trainer(object):
                                                           step_size=self.args.lr_scheduler_step,
                                                           gamma=0.1)
 
-        # Log settings
-        self.logger = Logger(self.args.log_path)
-        self.log_table = None
-
     def train(self):
         num_epochs = self.args.epoch
 
@@ -69,7 +70,8 @@ class Trainer(object):
             self.exp_lr_scheduler.step()
 
             time_elapsed = time.time() - since
-            print('{:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+            print("Epoch {}: {:.0f}m {:.0f}s".format(epoch, time_elapsed // 60, time_elapsed % 60))
+            self.logger.log_summary(mode="INFO", msg="Epoch {}: {:.0f}m {:.0f}s".format(epoch, time_elapsed // 60, time_elapsed % 60))
 
     def run_single_step(self, epoch):
         self.model.train()
@@ -104,20 +106,23 @@ class Trainer(object):
                 yolo_loss.backward()
                 self.optimizer.step()
 
-                # metrics
-                print(yolo_metrics(epoch=epoch, phase="train", metrics=epoch_metrics))
+            # metrics
+            out_metric = yolo_metrics(epoch=epoch, phase="train", metrics=epoch_metrics)
+            print(out_metric)
+            self.logger.log_summary(mode="INFO", msg=out_metric)
 
-                # tensorboard
-                vis_step = len(self.dataloader['train']) * epoch + batch_i
-                logger.scalar_summary()
+            # tensorboard
+            vis_step = len(self.dataloader['train']) * epoch + batch_i
+            vis_metrics = [("train/total_loss", np.array(epoch_metrics["total_loss"]).sum()),
+                           ("train/x_loss", np.array(epoch_metrics["x"]).sum()),
+                           ("train/y_loss", np.array(epoch_metrics["y"]).sum()),
+                           ("train/w_loss", np.array(epoch_metrics["w"]).sum()),
+                           ("train/h_loss", np.array(epoch_metrics["h"]).sum())]
+            self.logger.list_of_scalars_summary(vis_metrics, vis_step)
 
-        # tensorboard
-
-        # print_metrics(metrics, samples, 'train', epoch)
-        # self.log_table = save_metrics(metrics, samples, 'train', epoch, self.log_table)
-        # epoch_loss = metrics['loss'] / samples
-
-        # self.logger.scalar_summary('loss/train', np.mean(loss_train), epoch)
+        if epoch % self.args.eval_interval == 0:
+            # TODO : FINISH EVAL PART
+            pass
 
         # if epoch % self.args.eval_interval == 0:
         #     valid_loss, valid_metrics, valid_samples = evaluate(self.model, self.dataloader, self.device)
@@ -159,8 +164,11 @@ def main():
         dataset[name] = SpineLocDataset(list_path=set_path)
 
     # model
-    model = ResUnet(in_channels=cfg.IN_CH, out_channels=cfg.SEG.OUT_CH, init_features=cfg.INIT_FEATURES,
-                    num_anchors=3, num_classes=6)
+    model = ResUnet(in_channels=cfg.IN_CH,
+                    out_channels=cfg.SEG.OUT_CH,
+                    init_features=cfg.INIT_FEATURES,
+                    num_anchors=cfg.LOC.NUM_ANCHORS,
+                    num_classes=cfg.LOC.NUM_CLASSES)
 
     # Training
     trainer = Trainer(args, dataset, model)
