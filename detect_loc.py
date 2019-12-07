@@ -29,8 +29,10 @@ class Inference(object):
         self.args = args
         self.model = model
         self.dataloader = {
-            'test': DataLoader(dataset['test'], batch_size=self.args.batch_size, shuffle=True, collate_fn=dataset['test'].collate_fn)
+            'test': DataLoader(dataset['test'], batch_size=self.args.batch_size, shuffle=True)
         }
+        
+        os.makedirs(self.args.output_path, exist_ok=True)
 
         self.device = torch.device(self.args.device if torch.cuda.is_available() else 'cpu')
         self.model.to(self.device)
@@ -42,17 +44,17 @@ class Inference(object):
                                               img_size=cfg.H))
 
     def inference(self):
-        COUNT = 0
 
         self.model.load_state_dict(torch.load(self.args.model_path))
         self.model.eval()
 
         classes = ["D1", "D2", "D3", "D4", "D5", "S"]
-        imgs, img_detections = [], []
+        imgs, img_detections, img_names = [], [], []
         Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
-        for batch_i, (x, _) in enumerate(self.dataloader['test']):
+        for batch_i, (x, x_name) in enumerate(self.dataloader['test']):
             imgs.append(x)
+            img_names.append(x_name[0])
             x = x.float()
             x = x.to(self.device)
 
@@ -70,7 +72,7 @@ class Inference(object):
         cmap = plt.get_cmap("tab20b")
         colors = [cmap(i) for i in np.linspace(0, 1, 20)]
 
-        for img_i, (img, img_detection) in enumerate(zip(imgs, img_detections)):
+        for img_i, (img, img_name, img_detection) in enumerate(zip(imgs, img_names, img_detections)):
             print("(%d) Image Under Detection" % (img_i))
 
             plt.figure()
@@ -124,8 +126,7 @@ class Inference(object):
             plt.axis("off")
             plt.gca().xaxis.set_major_locator(NullLocator())
             plt.gca().yaxis.set_major_locator(NullLocator())
-            plt.savefig(f"output/{COUNT}.jpg", bbox_inches="tight", pad_inches=0.0)
-            COUNT += 1
+            plt.savefig(f"output/{img_name}.jpg", bbox_inches="tight", pad_inches=0.0)
             plt.show()
             plt.close()
 
@@ -135,6 +136,7 @@ def main():
     parser = argparse.ArgumentParser(description="U-Net parameter selection")
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--device", type=str, default=cfg.TRAIN.DEVICE)
+    parser.add_argument("--output_path", type=str, default=cfg.TEST.OUTPUT_PATH)
     parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_2.pth")
     args = parser.parse_args()
 
@@ -144,7 +146,7 @@ def main():
         'test': testset
     }
     set_path = os.path.join(dataset_path, "test.txt")
-    dataset["test"] = SpineLocDataset(list_path=set_path)
+    dataset["test"] = SpineLoadImageDataset(list_path=set_path)
 
     # model
     model = ResUnet(in_channels=cfg.IN_CH, out_channels=cfg.SEG.OUT_CH, init_features=cfg.INIT_FEATURES,

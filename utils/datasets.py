@@ -93,6 +93,21 @@ class SpineLocDataset:
 
         return imgs, targets
 
+class SpineLoadImageDataset:
+    def __init__(self, list_path):
+        with open(list_path, "r") as file:
+            self.img_files = file.readlines()
+
+    def __len__(self):
+        return len(self.img_files)
+
+    def __getitem__(self, index):
+        img_path = self.img_files[index % len(self.img_files)].rstrip()
+        img = transforms.ToTensor()(Image.open(img_path).convert('L'))
+        img_name = img_path.split("/")[-1].split(".")[0]
+
+        return img, img_name
+
 
 
 
