@@ -104,7 +104,8 @@ class Trailer(nn.Module):
         trail = self.trail(trail)
 
         output = torch.sigmoid(self.output(trail))
-        return yolo3, yolo2, yolo1
+        
+        return yolo3, yolo2, yolo1, output
 
     def _init_layer(self, in_ch, out_ch,name):
         up = Upsample(mode="deconv", in_ch=in_ch, out_ch=out_ch)
@@ -118,11 +119,18 @@ if __name__ == '__main__':
     model = ResUnet(in_channels=3, out_channels=4, init_features=32, num_anchors=3, num_classes=6)
     model = model.to(device)
 
-    summary(model, input_size=(3, 416, 416))
+    summary(model, input_size=(3, 512, 512))
 
     if True:
         from torch.autograd import Variable
-        img = Variable(torch.rand(2, 3, 416, 416))
+        img = Variable(torch.rand(2, 3, 512, 512))
 
         net = ResUnet(in_channels=3, out_channels=4, init_features=32, num_anchors=3, num_classes=6)
-        yolo3, yolo2, yolo1 = net(img)
+        # output, yolo3, yolo2, yolo1 = net(img)
+        # print(f"yolo layers are {yolo3.size()}, {yolo2.size()}, {yolo1.size()}")
+        # print(f"output layer is {output.size()}")
+        
+        output = net(img)
+        print(f"yolo layers are {output[0].size()}, {output[1].size()}, {output[2].size()}")
+        print(f"output layer is {output[3].size()}")
+        

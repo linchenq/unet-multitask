@@ -117,7 +117,7 @@ class YoloLoss(SuperYoloLayer):
         loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
         loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
         loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
-        total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+        local_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
 
         # Metrics
         cls_acc = 100 * class_mask[obj_mask].mean()
@@ -133,7 +133,7 @@ class YoloLoss(SuperYoloLayer):
 
         self.metrics = {
             "grid_size": self.grid_size,
-            "total_loss": total_loss.detach().cpu().item(),
+            "local_loss": local_loss.detach().cpu().item(),
             "x": loss_x.detach().cpu().item(),
             "y": loss_y.detach().cpu().item(),
             "w": loss_w.detach().cpu().item(),
@@ -148,7 +148,7 @@ class YoloLoss(SuperYoloLayer):
             "conf_noobj": conf_noobj.detach().cpu().item(),
         }
 
-        return total_loss
+        return local_loss
 
 
 class YoloLayer(SuperYoloLayer):
@@ -158,8 +158,12 @@ class YoloLayer(SuperYoloLayer):
 
 
 class SegLoss(nn.Module):
-    @staticmethod
-    def _dice_loss(y_pred, y_true, smooth):
+    def __init__(self):
+        super(SegLoss, self).__init__()
+        self.metrics = {}
+        self.smooth = 1.0
+    
+    def _dice_loss(self, y_pred, y_true, smooth):
         y_pred = y_pred.contiguous()
         y_true = y_true.contiguous()
         intersection = (y_pred * y_true).sum(dim=2).sum(dim=2)
@@ -167,30 +171,33 @@ class SegLoss(nn.Module):
         dice_loss = dice_loss.mean()
         return dice_loss
 
-    @staticmethod
-    def _bce_loss(y_pred, y_true):
+    def _bce_loss(self, y_pred, y_true):
         bce_loss = nn.BCEWithLogitsLoss()
         bce_loss = bce_loss(y_pred, y_true)
         return bce_loss
 
-    def forward(self, y_pred, y_true, metrics, mode="both"):
+    def forward(self, y_pred, y_true, mode="db"):
         dice = self._dice_loss(y_pred, y_true, self.smooth)
         bce = self._bce_loss(y_pred, y_true)
-        metrics['dice_seg'] += dice.data.cpu().numpy() * y_true.size(0)
-        metrics['bce_seg'] += bce.data.cpu().numpy() * y_true.size(0)
-
+        
         bce_weight = 0.5
-        bce_dice_loss = bce_weight * bce + (1. - bce_weight) * dice
-        metrics['both_seg'] = bce_dice_loss.data.cpu().numpy() * y_true.size(0)
-
-        if mode == "bce":
-            metrics["seg_loss"] = metrics['bce_seg']
-            return bce
-        elif mode == "dice":
-            metrics["seg_loss"] = metrics['dice_seg']
+        bce_dice = bce_weight * bce + (1. - bce_weight) * dice
+        
+        self.metrics = {
+            "dice_loss": dice.detach().cpu().item(),
+            "bce_loss": bce.detach().cpu().item(),
+            "db_loss": bce_dice.detach().cpu().item()
+        }
+        
+        if mode == "dice":
+            self.metrics["seg_loss"] = self.metrics["dice_loss"]
             return dice
-        elif mode == "both":
-            metrics["seg_loss"] = metrics['both_seg']
-            return bce_dice_loss
+        elif mode == "bce":
+            self.metrics["seg_loss"] = self.metrics["bce_loss"]
+            return bce
+        elif mode == "db":
+            self.metrics["seg_loss"] = self.metrics["db_loss"]
+            return bce_dice
         else:
             raise NotImplementedError
+            

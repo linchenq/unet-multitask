@@ -8,7 +8,6 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torch.autograd import Variable
 
 from cfgs.config import cfg
 from models import *
@@ -85,7 +84,7 @@ class Trainer(object):
             yolo_loss, losses = 0, []
             epoch_metrics = {
                     "grid_size": [],
-                    "total_loss": [],
+                    "local_loss": [],
                     "x": [], "y": [], "w": [], "h": [],
                     "conf": [], "cls": [],
                     "cls_acc": [],
@@ -93,7 +92,9 @@ class Trainer(object):
                     "conf_obj": [], "conf_noobj": []
             }
             with torch.enable_grad():
-                yolo = self.model(x)
+                output = self.model(x)
+                yolo = output[:2]
+                
                 for i in range(len(yolo)):
                     i_loss = self.loss[i].forward(yolo[i], targets)
                     losses.append(i_loss)
@@ -113,7 +114,7 @@ class Trainer(object):
 
             # tensorboard
             vis_step = len(self.dataloader['train']) * epoch + batch_i
-            vis_metrics = [("train/total_loss", np.array(epoch_metrics["total_loss"]).sum()),
+            vis_metrics = [("train/local_loss", np.array(epoch_metrics["local_loss"]).sum()),
                            ("train/x_loss", np.array(epoch_metrics["x"]).sum()),
                            ("train/y_loss", np.array(epoch_metrics["y"]).sum()),
                            ("train/w_loss", np.array(epoch_metrics["w"]).sum()),
