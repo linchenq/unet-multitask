@@ -139,7 +139,7 @@ def main():
     parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_2.pth")
     args = parser.parse_args()
 
-    dataset_path = './datasets/localization/'
+    dataset_path = '../datasets/localization/'
     testset = None, None
     dataset = {
         'test': testset

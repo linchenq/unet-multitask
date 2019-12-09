@@ -61,7 +61,7 @@ def main():
     args = parser.parse_args()
 
     # dataset
-    dataset_path = './datasets/segmentation/'
+    dataset_path = '../datasets/segmentation/'
     testset = None
     dataset = {
         'test': testset

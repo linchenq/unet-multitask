@@ -22,9 +22,13 @@ class Trainer(object):
     def __init__(self, args, dataset, model):
         self.args = args
         self.model = model
+        # self.dataloader = {
+        #     'train': DataLoader(dataset['train'], batch_size=self.args.batch_size, shuffle=True, collate_fn=dataset['train'].collate_fn),
+        #     'valid': DataLoader(dataset['valid'], batch_size=self.args.batch_size, shuffle=True, collate_fn=dataset['valid'].collate_fn)
+        # }
         self.dataloader = {
-            'train': DataLoader(dataset['train'], batch_size=self.args.batch_size, shuffle=True, collate_fn=dataset['train'].collate_fn),
-            'valid': DataLoader(dataset['valid'], batch_size=self.args.batch_size, shuffle=True, collate_fn=dataset['valid'].collate_fn)
+            'train': DataLoader(dataset['train'], batch_size=self.args.batch_size, shuffle=True),
+            'valid': DataLoader(dataset['valid'], batch_size=self.args.batch_size, shuffle=True)
         }
 
         # prerequisites
@@ -45,12 +49,7 @@ class Trainer(object):
         self.model.to(self.device)
 
         # Loss function
-        num_anchors = cfg.LOC.NUM_ANCHORS
-        self.loss = []
-        for index in range(int(len(cfg.LOC.ANCHORS) / num_anchors)):
-            self.loss.append(YoloLoss(cfg.LOC.ANCHORS[index*num_anchors: (index+1)*num_anchors],
-                                      cfg.LOC.NUM_CLASSES,
-                                      img_size=cfg.H))
+        self.loss = SegLoss()
 
         # optimizer
         self.optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()),
@@ -74,60 +73,56 @@ class Trainer(object):
 
     def run_single_step(self, epoch):
         self.model.train()
+        
+        epoch_metrics = {
+            "seg_loss": [],
+            "dice_loss": [], "bce_loss": [], "db_loss": []
+        }
 
-        for batch_i, (x, targets) in enumerate(self.dataloader['train']):
-            x, targets = x.float(), targets.float()
-            x, targets = x.to(self.device), targets.to(self.device)
+        for batch_i, (x, masks) in enumerate(self.dataloader['train']):
+            x, masks = x.float(), masks.float()
+            x, masks = x.to(self.device), masks.to(self.device)
 
             self.optimizer.zero_grad()
 
-            yolo_loss, losses = 0, []
-            epoch_metrics = {
-                    "grid_size": [],
-                    "local_loss": [],
-                    "x": [], "y": [], "w": [], "h": [],
-                    "conf": [], "cls": [],
-                    "cls_acc": [],
-                    "recall50": [], "recall75": [], "precision": [],
-                    "conf_obj": [], "conf_noobj": []
-            }
             with torch.enable_grad():
                 output = self.model(x)
-                yolo = output[:2]
+                seg_res = output[-1]
                 
-                for i in range(len(yolo)):
-                    i_loss = self.loss[i].forward(yolo[i], targets)
-                    losses.append(i_loss)
-                    yolo_loss += i_loss
-
-                    # metrics logger
-                    for k, v in self.loss[i].metrics.items():
-                        epoch_metrics[k].append(v)
-
-                yolo_loss.backward()
-                self.optimizer.step()
-
-            # metrics for yolo loss
-            out_metric = yolo_metrics(epoch=epoch, phase="train", metrics=epoch_metrics)
-            print(out_metric)
-            self.logger.log_summary(mode="INFO", msg=out_metric)
-
-            # tensorboard
-            vis_step = len(self.dataloader['train']) * epoch + batch_i
-            vis_metrics = [("train/local_loss", np.array(epoch_metrics["local_loss"]).sum()),
-                           ("train/x_loss", np.array(epoch_metrics["x"]).sum()),
-                           ("train/y_loss", np.array(epoch_metrics["y"]).sum()),
-                           ("train/w_loss", np.array(epoch_metrics["w"]).sum()),
-                           ("train/h_loss", np.array(epoch_metrics["h"]).sum())]
-            self.logger.list_of_scalars_summary(vis_metrics, vis_step)
+                seg_loss = self.loss.forward(seg_res, masks)
+                # metrics logger
+                for k, v in self.loss.metrics.items():
+                    epoch_metrics[k].append(v)
+            
+            seg_loss.backward()
+            self.optimizer.step()
+        
+        #TODO
+        # DEBUG TO TEST IF EPOCH_METRICS IS TENSOR / NUMPY?
+        
+        # metrics logger
+        vis_metrics = [("train/seg_loss", np.array(epoch_metrics["seg_loss"]).sum()),
+                       ("train/dice_loss", np.array(epoch_metrics["dice_loss"]).sum()),
+                       ("train/bce_loss", np.array(epoch_metrics["bce_loss"]).sum()),
+                       ("train/db_loss", np.array(epoch_metrics["db_loss"]).sum())]
+        self.logger.list_of_scalars_summary(vis_metrics, epoch)
+        
+        for k, v in epoch_metrics.items():
+            epoch_metrics[k] = np.array(v).sum()
+            
+        epoch_metrics = {**{"epoch": epoch, "phase":"train"}, **epoch_metrics}
+        out_metrics = general_metrics(epoch_metrics)
+        print(out_metrics)
+        self.logger.log_summary(mode="INFO", msg=out_metrics)
 
         if epoch % self.args.eval_interval == 0:
-            evaluate(model=self.model, dataset=self.dataloader, device=self.device,
-                     iou_thres=0.5, conf_thres=0.001, nms_thres=0.5, img_size=cfg.H,
-                     epoch=epoch, logger=self.logger)
+            # evaluate(model=self.model, dataset=self.dataloader, device=self.device,
+            #          iou_thres=0.5, conf_thres=0.001, nms_thres=0.5, img_size=cfg.H,
+            #          epoch=epoch, logger=self.logger)
+            pass
 
         if epoch % self.args.save_interval == 0:
-            torch.save(self.model.state_dict(), f"./saves/loc_ckpt_%d.pth" % epoch)
+            torch.save(self.model.state_dict(), f"./saves/seg_ckpt_%d.pth" % epoch)
 
 
 def main():
@@ -149,7 +144,7 @@ def main():
     args = parser.parse_args()
 
     # dataset prepration
-    dataset_path = './datasets/localization/'
+    dataset_path = '../datasets/segmentation/'
     trainset, validset, testset = None, None, None
     dataset = {
         'train': trainset,
@@ -157,7 +152,7 @@ def main():
     }
     for name in ['train', 'valid']:
         set_path = os.path.join(dataset_path, f"{name}.txt")
-        dataset[name] = SpineLocDataset(list_path=set_path)
+        dataset[name] = SpineSegDataset(list_path=set_path)
 
     # model
     model = ResUnet(in_channels=cfg.IN_CH,
@@ -173,4 +168,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
