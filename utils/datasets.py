@@ -33,6 +33,19 @@ class SpineSegDataset:
             mask[i, ...] = mat_data[cfg.SEG.REP[i]]
 
         return image, mask
+    
+    # def collate_fn(self, batch):
+    #     imgs, masks = list(zip(*batch))
+
+    #     masks = [boxes for boxes in masks if boxes is not None]
+
+    #     for i, boxes in enumerate(masks):
+    #         boxes[:, 0] = i
+    #     masks = torch.cat(masks, 0)
+
+    #     imgs = torch.stack(imgs)
+
+    #     return imgs, masks
 
 class SpineLocDataset:
     def __init__(self, list_path):

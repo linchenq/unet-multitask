@@ -22,7 +22,6 @@ from utils.datasets import *
 from utils.loss import *
 from utils.logger import *
 from utils.utils import *
-from evaluate import *
 
 class Inference(object):
     def __init__(self, args, dataset, model):

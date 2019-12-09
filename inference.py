@@ -1,17 +1,26 @@
 import os
-import torch
+import argparse
 from terminaltables import AsciiTable
 import matplotlib.pyplot as plt
 
+import torch
+import torch.optim as optim
+from torch.utils.data import DataLoader
+
 from cfgs.config import cfg
-from utils import *
+from models import *
+from utils.datasets import *
+from utils.loss import *
+from utils.logger import *
+from utils.utils import *
+from utils.metrics import *
 
 class Inference(object):
     def __init__(self, args, dataset, model):
         self.args = args
         self.model = model
         self.dataloader = {
-            'test': DataLoader(dataset['test'], batch_size=self.args.batch_size, shuffle=True),
+            'test': DataLoader(dataset['test'], batch_size=self.args.batch_size, shuffle=False),
         }
         self.device = torch.device(self.args.device if torch.cuda.is_available() else 'cpu')
         self.model.to(self.device)
@@ -24,7 +33,8 @@ class Inference(object):
             x, y_test = x.float(), y_test.float()
             x, y_test = x.to(self.device), y_test.to(self.device)
 
-            y_pred = self.model(x)
+            output = self.model(x)
+            y_pred = output[-1]
             n_classes = cfg.SEG.OUT_CH
 
             # ground truth
@@ -47,11 +57,8 @@ def main():
     parser = argparse.ArgumentParser(description="U-Net parameter selection")
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--device", type=str, default=cfg.TRAIN.DEVICE)
-    parser.add_argument("--model_path", type=str, default="./saves/unet_ckpt_200.pth")
+    parser.add_argument("--model_path", type=str, default="./saves/seg_ckpt_90.pth")
     args = parser.parse_args()
-
-    # asd = "./saves/unet_ckpt_30.pth"
-    # print(os.path.exists(asd))
 
     # dataset
     dataset_path = './datasets/segmentation/'
@@ -62,7 +69,12 @@ def main():
     dataset['test'] = SpineSegDataset(list_path=os.path.join(dataset_path, "test.txt"))
 
     # model
-    model = ResUnet(in_channels=cfg.IN_CH, out_channels=cfg.SEG.OUT_CH, init_features=cfg.INIT_FEATURES)
+    model = ResUnet(in_channels=cfg.IN_CH,
+                    out_channels=cfg.SEG.OUT_CH,
+                    init_features=cfg.INIT_FEATURES,
+                    num_anchors=cfg.LOC.NUM_ANCHORS,
+                    num_classes=cfg.LOC.NUM_CLASSES)
+    
     # Training
     inference = Inference(args, dataset, model)
     inference.inference()

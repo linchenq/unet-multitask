@@ -34,9 +34,9 @@ class Header(nn.Module):
         )
         self.header = ResBlock(self.features[0])
         self.down0, self.enc1 = self._init_layer(1, self.features[0], self.features[1], "enc1")
-        self.down1, self.enc2 = self._init_layer(2, self.features[1], self.features[2], "enc2")
-        self.down2, self.enc3 = self._init_layer(4, self.features[2], self.features[3], "enc3")
-        self.down3, self.enc4 = self._init_layer(8, self.features[3], self.features[4], "enc4")
+        self.down1, self.enc2 = self._init_layer(1, self.features[1], self.features[2], "enc2")
+        self.down2, self.enc3 = self._init_layer(1, self.features[2], self.features[3], "enc3")
+        self.down3, self.enc4 = self._init_layer(1, self.features[3], self.features[4], "enc4")
         self.down4, self.bottleneck = self._init_layer(1, self.features[4], self.features[5], "bottleneck")
 
     def forward(self, x):
@@ -78,9 +78,9 @@ class Trailer(nn.Module):
         # yolo layers
         # n_blocks, in_ch, out_ch, num_filters):
 
-        self.yolo3 = YoloBlock(n_blocks=2, in_ch=self.features[5], out_ch=self.features[4], num_filters=self.yolo_filter)
-        self.yolo2 = YoloBlock(n_blocks=0, in_ch=self.features[4], out_ch=self.features[3], num_filters=self.yolo_filter)
-        self.yolo1 = YoloBlock(n_blocks=0, in_ch=self.features[3], out_ch=self.features[2], num_filters=self.yolo_filter)
+        self.yolo3 = YoloBlock(n_blocks=1, in_ch=self.features[5], out_ch=self.features[4], num_filters=self.yolo_filter)
+        self.yolo2 = YoloBlock(n_blocks=1, in_ch=self.features[4], out_ch=self.features[3], num_filters=self.yolo_filter)
+        self.yolo1 = YoloBlock(n_blocks=1, in_ch=self.features[3], out_ch=self.features[2], num_filters=self.yolo_filter)
 
         self.output = nn.Conv2d(self.features[0], self.out_ch, kernel_size=1)
 

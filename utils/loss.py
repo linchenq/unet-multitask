@@ -161,7 +161,7 @@ class SegLoss(nn.Module):
     def __init__(self):
         super(SegLoss, self).__init__()
         self.metrics = {}
-        self.smooth = 1.0
+        self.smooth = 1e-4
     
     def _dice_loss(self, y_pred, y_true, smooth):
         y_pred = y_pred.contiguous()
