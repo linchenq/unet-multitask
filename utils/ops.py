@@ -58,7 +58,7 @@ class ResBlock(nn.Module):
         out = self.block2(out)
         out += res
 
-        return res
+        return out
 
 
 class YoloBlock(nn.Module):
