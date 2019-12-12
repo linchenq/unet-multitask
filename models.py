@@ -25,7 +25,7 @@ class Header(nn.Module):
         super(Header, self).__init__()
         self.in_ch = in_ch
 
-        self.features = [2**i for i in range(depth+1)] * init_features
+        self.features = [(2**i)*init_features for i in range(depth+1)]
 
         self.header_resample = nn.Sequential(
                 (nn.Conv2d(self.in_ch, self.features[0], kernel_size=3, padding=1)),
@@ -34,9 +34,9 @@ class Header(nn.Module):
         )
         self.header = ResBlock(self.features[0])
         self.down0, self.enc1 = self._init_layer(1, self.features[0], self.features[1], "enc1")
-        self.down1, self.enc2 = self._init_layer(1, self.features[1], self.features[2], "enc2")
-        self.down2, self.enc3 = self._init_layer(1, self.features[2], self.features[3], "enc3")
-        self.down3, self.enc4 = self._init_layer(1, self.features[3], self.features[4], "enc4")
+        self.down1, self.enc2 = self._init_layer(2, self.features[1], self.features[2], "enc2")
+        self.down2, self.enc3 = self._init_layer(4, self.features[2], self.features[3], "enc3")
+        self.down3, self.enc4 = self._init_layer(8, self.features[3], self.features[4], "enc4")
         self.down4, self.bottleneck = self._init_layer(1, self.features[4], self.features[5], "bottleneck")
 
     def forward(self, x):
@@ -64,7 +64,7 @@ class Trailer(nn.Module):
     def __init__(self, out_ch, init_features, num_anchors, num_classes, depth=5):
         super(Trailer, self).__init__()
         self.out_ch = out_ch
-        self.features = [2**i for i in range(depth+1)] * init_features
+        self.features = [(2**i)*init_features for i in range(depth+1)]
         self.num_anchors = num_anchors
         self.num_classes = num_classes
         self.yolo_filter = num_anchors * (5 + num_classes)
@@ -78,9 +78,9 @@ class Trailer(nn.Module):
         # yolo layers
         # n_blocks, in_ch, out_ch, num_filters):
 
-        self.yolo3 = YoloBlock(n_blocks=1, in_ch=self.features[5], out_ch=self.features[4], num_filters=self.yolo_filter)
-        self.yolo2 = YoloBlock(n_blocks=1, in_ch=self.features[4], out_ch=self.features[3], num_filters=self.yolo_filter)
-        self.yolo1 = YoloBlock(n_blocks=1, in_ch=self.features[3], out_ch=self.features[2], num_filters=self.yolo_filter)
+        self.yolo3 = YoloBlock(n_blocks=2, in_ch=self.features[5], out_ch=self.features[4], num_filters=self.yolo_filter)
+        self.yolo2 = YoloBlock(n_blocks=0, in_ch=self.features[4], out_ch=self.features[3], num_filters=self.yolo_filter)
+        self.yolo1 = YoloBlock(n_blocks=0, in_ch=self.features[3], out_ch=self.features[2], num_filters=self.yolo_filter)
 
         self.output = nn.Conv2d(self.features[0], self.out_ch, kernel_size=1)
 

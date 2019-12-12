@@ -1,5 +1,5 @@
 from collections import defaultdict
-import numpy
+import numpy as np
 import torch
 import tqdm
 
@@ -37,16 +37,26 @@ def evaluate(model, dataset, device,
 
         epoch_metrics = {
                 "grid_size": [],
-                "total_loss": [],
+                "local_loss": [],
                 "x": [], "y": [], "w": [], "h": [],
                 "conf": [], "cls": [],
                 "cls_acc": [],
                 "recall50": [], "recall75": [], "precision": [],
                 "conf_obj": [], "conf_noobj": []
         }
+        epoch_format = {
+            "grid_size": "%2d",
+            "local_loss": "%.6f",
+            "x": "%.6f", "y": "%.6f", "w": "%.6f", "h": "%.6f",
+            "conf": "%.6f", "cls": "%.6f",
+            "cls_acc": "%.2f%%",
+            "recall50": "%.6f", "recall75": "%.6f", "precision": "%.6f",
+            "conf_obj": "%.6f", "conf_noobj": "%.6f"
+        }
 
         with torch.no_grad():
-            yolo = model(x)
+            output = model(x)
+            yolo = output[:3]
             i_yolo = []
 
             for i in range(len(yolo)):
@@ -68,13 +78,13 @@ def evaluate(model, dataset, device,
             sample_metrics += get_batch_statistics(detection, targets, iou_thres)
 
         # metrics for validation phase
-        out_table = yolo_metrics(epoch=epoch, phase="valid", metrics=epoch_metrics)
+        out_table = yolo_metrics(epoch=epoch, phase="valid", metrics=epoch_metrics, formats=epoch_format)
         print(out_table)
         logger.log_summary(mode="INFO", msg=out_table)
 
         # tensorboard
         vis_step = len(eval_dataset) * epoch + batch_i
-        vis_metrics = [("valid/total_loss", np.array(epoch_metrics["total_loss"]).sum()),
+        vis_metrics = [("valid/local_loss", np.array(epoch_metrics["local_loss"]).sum()),
                        ("valid/x_loss", np.array(epoch_metrics["x"]).sum()),
                        ("valid/y_loss", np.array(epoch_metrics["y"]).sum()),
                        ("valid/w_loss", np.array(epoch_metrics["w"]).sum()),
@@ -82,10 +92,13 @@ def evaluate(model, dataset, device,
         logger.list_of_scalars_summary(vis_metrics, vis_step)
 
     # metrics for detection
-    true_positives = np.concatenate(list(zip(*sample_metrics))[0], 0)
-    pred_scores = np.concatenate([x.cpu() for x in list(zip(*sample_metrics))[1]], 0)
-    pred_labels = np.concatenate([x.cpu() for x in list(zip(*sample_metrics))[2]], 0)
-    precision, recall, AP, f1, ap_class = ap_per_class(true_positives, pred_scores, pred_labels, labels)
+    if sample_metrics:
+        true_positives = np.concatenate(list(zip(*sample_metrics))[0], 0)
+        pred_scores = np.concatenate([x.cpu() for x in list(zip(*sample_metrics))[1]], 0)
+        pred_labels = np.concatenate([x.cpu() for x in list(zip(*sample_metrics))[2]], 0)
+        precision, recall, AP, f1, ap_class = ap_per_class(true_positives, pred_scores, pred_labels, labels)
+    else:
+        precision, recall, AP, f1, ap_class = np.array([-1]), np.array([-1]), np.array([-1]), np.array([-1]), -1
 
     detection_table = general_metrics(metrics={"epoch": epoch,
                                                "phase": "valid",
