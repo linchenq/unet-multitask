@@ -58,7 +58,8 @@ class Inference(object):
             x = x.to(self.device)
 
             with torch.no_grad():
-                yolo = self.model(x)
+                output = self.model(x)
+                yolo = output[:3]
                 yolo_out = []
 
                 for i in range(len(yolo)):
@@ -125,7 +126,7 @@ class Inference(object):
             plt.axis("off")
             plt.gca().xaxis.set_major_locator(NullLocator())
             plt.gca().yaxis.set_major_locator(NullLocator())
-            plt.savefig(f"output/{img_name}.jpg", bbox_inches="tight", pad_inches=0.0)
+            plt.savefig(f"./outputs/{img_name}.jpg", bbox_inches="tight", pad_inches=0.0)
             plt.show()
             plt.close()
 
@@ -136,7 +137,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--device", type=str, default=cfg.TRAIN.DEVICE)
     parser.add_argument("--output_path", type=str, default=cfg.TEST.OUTPUT_PATH)
-    parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_2.pth")
+    parser.add_argument("--model_path", type=str, default="./saves/loc_ckpt_135.pth")
     args = parser.parse_args()
 
     dataset_path = '../datasets/localization/'

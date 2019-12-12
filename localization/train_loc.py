@@ -91,9 +91,18 @@ class Trainer(object):
                     "recall50": [], "recall75": [], "precision": [],
                     "conf_obj": [], "conf_noobj": []
             }
+            epoch_format = {
+                "grid_size": "%2d",
+                "local_loss": "%.6f",
+                "x": "%.6f", "y": "%.6f", "w": "%.6f", "h": "%.6f",
+                "conf": "%.6f", "cls": "%.6f",
+                "cls_acc": "%.2f%%",
+                "recall50": "%.6f", "recall75": "%.6f", "precision": "%.6f",
+                "conf_obj": "%.6f", "conf_noobj": "%.6f"
+            }
             with torch.enable_grad():
                 output = self.model(x)
-                yolo = output[:2]
+                yolo = output[:3]
                 
                 for i in range(len(yolo)):
                     i_loss = self.loss[i].forward(yolo[i], targets)
@@ -108,7 +117,7 @@ class Trainer(object):
                 self.optimizer.step()
 
             # metrics for yolo loss
-            out_metric = yolo_metrics(epoch=epoch, phase="train", metrics=epoch_metrics)
+            out_metric = yolo_metrics(epoch=epoch, phase="train", metrics=epoch_metrics, formats=epoch_format)
             print(out_metric)
             self.logger.log_summary(mode="INFO", msg=out_metric)
 
