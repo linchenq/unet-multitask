@@ -1,9 +1,20 @@
+# generating folders
+## log folder, saved tensorboard and text log
 logs
-
 saves
+outputs
 
+# pycache
 __pycache__
 
+# spyder project initial
 .spyproject
 
-output
+# custom dataset
+datasets/localization/annotations
+
+datasets/localization/images
+
+datasets/localization/labels
+
+datasets/localization/samples
