@@ -25,7 +25,7 @@ def bbox_wh_iou(wh1, wh2):
     w1, h1 = wh1[0], wh1[1]
     w2, h2 = wh2[0], wh2[1]
     inter_area = torch.min(w1, w2) * torch.min(h1, h2)
-    union_area = (w1 * h1 + 1e-16) + w2 * h2 - inter_area
+    union_area = w1 * h1 + w2 * h2 - inter_area + 1e-16
     return inter_area / union_area
 
 
@@ -57,11 +57,13 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
         while detections.size(0):
             large_overlap = bbox_iou(detections[0, :4].unsqueeze(0), detections[:, :4]) > nms_thres
             label_match = detections[0, -1] == detections[:, -1]
+            
             # Indices of boxes with lower confidence scores, large IOUs and matching labels
             invalid = large_overlap & label_match
             weights = detections[invalid, 4:5]
+            
             # Merge overlapping bboxes by order of confidence
-            detections[0, :4] = (weights * detections[invalid, :4]).sum(0) / weights.sum()
+            detections[0, :4] = (weights * detections[invalid, :4]).sum(0) / (weights.sum() + 1e-16)
             keep_boxes += [detections[0]]
             detections = detections[~invalid]
         if keep_boxes:

@@ -2,14 +2,15 @@ import numpy as np
 import tqdm
 from terminaltables import AsciiTable
 
-def yolo_metrics(epoch, phase, metrics):
+def yolo_metrics(epoch, phase, metrics, formats):
     index = ['Metrics', 'Yolo Layer 3', 'Yolo Layer 2', 'Yolo Layer 1']
     epoch_row = ['Epoch', epoch, epoch, epoch]
     phase_row = ['Phase', phase, phase, phase]
 
     res_table = [index, epoch_row, phase_row]
     for k, v in metrics.items():
-        res_table.append([k] + v)
+        formatted_v = [formats[k] % v_item for v_item in v]
+        res_table.append([k] + formatted_v)
     return AsciiTable(res_table).table
 
 def general_metrics(metrics):

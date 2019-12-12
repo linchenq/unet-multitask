@@ -161,7 +161,7 @@ class SegLoss(nn.Module):
     def __init__(self):
         super(SegLoss, self).__init__()
         self.metrics = {}
-        self.smooth = 1e-4
+        self.smooth = 1
     
     def _dice_loss(self, y_pred, y_true, smooth):
         y_pred = y_pred.contiguous()
@@ -172,6 +172,8 @@ class SegLoss(nn.Module):
         return dice_loss
 
     def _bce_loss(self, y_pred, y_true):
+        y_pred = y_pred.contiguous()
+        y_true = y_true.contiguous()
         bce_loss = nn.BCEWithLogitsLoss()
         bce_loss = bce_loss(y_pred, y_true)
         return bce_loss

@@ -6,9 +6,10 @@ import torch.nn.functional as F
 class _Conv2d3x3(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(_Conv2d3x3, self).__init__()
-        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_ch)
         self.leaky1 = nn.LeakyReLU(0.1)
+        # self.leaky1 = nn.ReLU(inplace=True)
 
     def forward(self, x):
         out = self.conv1(x)
@@ -21,9 +22,10 @@ class _Conv2d3x3(nn.Module):
 class _Conv2d1x1(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(_Conv2d1x1, self).__init__()
-        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=1)
+        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_ch)
         self.leaky1 = nn.LeakyReLU(0.1)
+        # self.leaky1 = nn.ReLU(inplace=True)
 
     def forward(self, x):
         out = self.conv1(x)

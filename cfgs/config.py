@@ -25,15 +25,15 @@ __C.TRAIN.SAVE_PATH = "./saves"
 
 __C.TRAIN.DEVICE = "cuda:0"
 
-__C.TRAIN.EPOCH = 200
+__C.TRAIN.EPOCH = 150
 
 __C.TRAIN.SAVE_INTERVAL = 5
 
 __C.TRAIN.EVAL_INTERVAL = 5
 
-__C.TRAIN.LR_SCHEDULER = 100
+__C.TRAIN.LR_SCHEDULER = 70
 
-__C.TRAIN.LR = 0.1
+__C.TRAIN.LR = 1
 
 
 ### Testing options ###
